@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
+    <title>FastBox Сызрань — Доставка из Rostic's</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #e41c2d; /* Цвет Rostic's */
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-hint-color: #999999;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            padding: 15px;
+            text-align: center;
+            background: #e41c2d;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .category-nav {
+            display: flex;
+            overflow-x: auto;
+            background: white;
+            padding: 10px;
+            gap: 10px;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 50px;
+            z-index: 99;
+        }
+
+        .category-nav button {
+            white-space: nowrap;
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: none;
+            cursor: pointer;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .product-card {
+            border: 1px solid #eee;
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: white;
+        }
+
+        .product-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .product-name {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            height: 2.4em;
+            overflow: hidden;
+        }
+
+        .product-price {
+            color: #e41c2d;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .add-btn {
+            background-color: #e41c2d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px;
+            width: 100%;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .cart-footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: white;
+            padding: 15px;
+            border-top: 1px solid #eee;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .order-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .badge {
+            background: #e41c2d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">FASTBOX — ROSTIC'S СОВЕТСКАЯ</div>
+
+<div class="category-nav" id="catNav">
+    <button onclick="filterMenu('all')">Всё</button>
+    <button onclick="filterMenu('combo')">Комбо и Ланчи</button>
+    <button onclick="filterMenu('burgers')">Бургеры и Роллы</button>
+    <button onclick="filterMenu('chicken')">Баскеты и Курица</button>
+    <button onclick="filterMenu('drinks')">Напитки и Десерты</button>
+</div>
+
+<div class="menu-grid" id="menuGrid"></div>
+
+<div class="cart-footer">
+    <div>
+        Итого: <span id="totalPrice">0</span>₽
+        <span class="badge" id="cartCount">0</span>
+    </div>
+    <button class="order-btn" onclick="sendOrder()">Оформить</button>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const menuData = [
+        // КОМБО И ЛАНЧИ
+        { cat: 'combo', name: "2 Азиатских Ролла (Креветки)", price: 584, img: "https://m.rostics.ru/images/products/pair_asian_shrimp_roll.png" },
+        { cat: 'combo', name: "2 Азиатских Бургера", price: 517, img: "https://m.rostics.ru/images/products/pair_asian_burger.png" },
+        { cat: 'combo', name: "2 Ростмастера Чиз Классик", price: 845, img: "https://m.rostics.ru/images/products/pair_boxmaster_cheese.png" },
+        { cat: 'combo', name: "ЛанчБаскет 5 за 450", price: 450, img: "https://m.rostics.ru/images/products/box_5_for_450.png" },
+        { cat: 'combo', name: "ЛанчБаскет 5 за 350", price: 350, img: "https://m.rostics.ru/images/products/box_5_for_350.png" },
+        { cat: 'combo', name: "Комбо с Ростмастером", price: 452, img: "https://m.rostics.ru/images/products/Combo_Boxmaster.png" },
+        { cat: 'combo', name: "Комбо с Шефбургером", price: 362, img: "https://m.rostics.ru/images/products/Combo_Chefburger_Classic.png" },
+        { cat: 'combo', name: "3 соуса по цене 2-х", price: 110, img: "https://m.rostics.ru/images/products/3_sauces_promo.png" },
+
+        // БУРГЕРЫ
+        { cat: 'burgers', name: "Двойной Азия Краб Бургер", price: 515, img: "https://m.rostics.ru/images/products/double_asia_crab_burger.png" },
+        { cat: 'burgers', name: "Азия Бургер", price: 291, img: "https://m.rostics.ru/images/products/asia_burger.png" },
+        { cat: 'burgers', name: "Бургер курица с клюквой", price: 294, img: "https://m.rostics.ru/images/products/cranberry_chicken_burger.png" },
+        { cat: 'burgers', name: "Маэстро Блю Чиз", price: 488, img: "https://m.rostics.ru/images/products/maestro_blue_cheese.png" },
+        { cat: 'burgers', name: "Биг Маэстро острый", price: 352, img: "https://m.rostics.ru/images/products/big_maestro.png" },
+        { cat: 'burgers', name: "Шефбургер оригинальный", price: 190, img: "https://m.rostics.ru/images/products/chefburger_classic.png" },
+        { cat: 'burgers', name: "Чизбургер де люкс", price: 130, img: "https://m.rostics.ru/images/products/cheeseburger_deluxe.png" },
+        { cat: 'burgers', name: "Чикенбургер", price: 70, img: "https://m.rostics.ru/images/products/chickenburger.png" },
+
+        // РОЛЛЫ
+        { cat: 'burgers', name: "Азия Ролл с креветками", price: 324, img: "https://m.rostics.ru/images/products/asia_shrimp_roll.png" },
+        { cat: 'burgers', name: "Ролл с клюквенным соусом", price: 269, img: "https://m.rostics.ru/images/products/cranberry_roll.png" },
+        { cat: 'burgers', name: "Ростмастер Блю Чиз", price: 508, img: "https://m.rostics.ru/images/products/boxmaster_blue_cheese.png" },
+        { cat: 'burgers', name: "Мега Ролл острый", price: 352, img: "https://m.rostics.ru/images/products/mega_roll.png" },
+
+        // БАСКЕТЫ И КУРИЦА
+        { cat: 'chicken', name: "Баскет 11 Крыльев + 11 Наггетсов", price: 714, img: "https://m.rostics.ru/images/products/basket_11_11.png" },
+        { cat: 'chicken', name: "Баскет L 24 Крыла", price: 870, img: "https://m.rostics.ru/images/products/basket_l_wings.png" },
+        { cat: 'chicken', name: "Баскет S 12 Крыльев", price: 558, img: "https://m.rostics.ru/images/products/basket_s_wings.png" },
+        { cat: 'chicken', name: "Мой Баскет с крылышками", price: 216, img: "https://m.rostics.ru/images/products/my_basket_wings.png" },
+        { cat: 'chicken', name: "Острые крылья (8 шт)", price: 319, img: "https://m.rostics.ru/images/products/wings_8.png" },
+
+        // НАПИТКИ И ДЕСЕРТЫ
+        { cat: 'drinks', name: "Ягодный Глинтвейн", price: 136, img: "https://m.rostics.ru/images/products/berry_mulled_wine.png" },
+        { cat: 'drinks', name: "Раф Халва", price: 206, img: "https://m.rostics.ru/images/products/raf_halva.png" },
+        { cat: 'drinks', name: "Эвервесс Кола 0.5 л", price: 147, img: "https://m.rostics.ru/images/products/evervess_cola_05.png" },
+        { cat: 'drinks', name: "Бабл Ти Зеленый Lipton", price: 291, img: "https://m.rostics.ru/images/products/bubble_tea_lipton.png" },
+        { cat: 'drinks', name: "Чизкейк с карамелью", price: 277, img: "https://m.rostics.ru/images/products/cheesecake_caramel.png" },
+        { cat: 'drinks', name: "Пирожок с вишней", price: 83, img: "https://m.rostics.ru/images/products/cherry_pie.png" },
+        { cat: 'drinks', name: "Мороженое Рожок", price: 56, img: "https://m.rostics.ru/images/products/ice_cream_cone.png" }
+    ];
+
+    let cart = [];
+
+    function renderMenu(filter = 'all') {
+        const grid = document.getElementById('menuGrid');
+        grid.innerHTML = '';
+        
+        menuData.forEach(item => {
+            if (filter === 'all' || item.cat === filter) {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.innerHTML = `
+                    <img src="${item.img}" alt="${item.name}">
+                    <div class="product-name">${item.name}</div>
+                    <div class="product-price">${item.price} ₽</div>
+                    <button class="add-btn" onclick="addToCart('${item.name}', ${item.price})">Добавить</button>
+                `;
+                grid.appendChild(card);
+            }
+        });
+    }
+
+    function filterMenu(cat) {
+        renderMenu(cat);
+    }
+
+    function addToCart(name, price) {
+        cart.push({name, price});
+        updateCart();
+    }
+
+    function updateCart() {
+        const total = cart.reduce((sum, item) => sum + item.price, 0);
+        document.getElementById('totalPrice').innerText = total;
+        document.getElementById('cartCount').innerText = cart.length;
+    }
+
+    function sendOrder() {
+        if (cart.length === 0) {
+            tg.showAlert("Корзина пуста!");
+            return;
+        }
+        
+        const orderData = {
+            type: 'order',
+            items: cart.map(i => i.name),
+            total: cart.reduce((sum, i) => sum + i.price, 0)
+        };
+        
+        tg.sendData(JSON.stringify(orderData));
+        tg.close();
+    }
+
+    // Инициализация
+    renderMenu();
+</script>
+
+</body>
+</html>
