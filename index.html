@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
+    <title>FastBox Syzran</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding-bottom: 120px;
+            color: #222;
+        }
+        .header {
+            background: #fff;
+            padding: 16px;
+            font-weight: 800;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        .categories {
+            display: flex;
+            overflow-x: auto;
+            padding: 10px;
+            gap: 8px;
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+        .categories::-webkit-scrollbar { display: none; }
+        .cat-item {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            white-space: nowrap;
+            font-size: 14px;
+            border: none;
+            font-weight: 600;
+        }
+        .cat-item.active { background: #e41c2d; color: #fff; }
+        .menu-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 10px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .card img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+        .price { font-weight: 800; font-size: 16px; margin: 5px 0; }
+        .name { font-size: 12px; color: #555; height: 30px; overflow: hidden; }
+        .btn-add {
+            background: #f5f5f5;
+            color: #e41c2d;
+            border: none;
+            border-radius: 10px;
+            padding: 8px;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        .cart-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 10px;
+            right: 10px;
+            background: #e41c2d;
+            border-radius: 15px;
+            padding: 15px;
+            display: none;
+            justify-content: space-between;
+            color: #fff;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">Rostic's Сызрань — FastBox</div>
+
+<div class="categories" id="catList">
+    <button class="cat-item active" onclick="filter('all', this)">Всё</button>
+    <button class="cat-item" onclick="filter('burgers', this)">Бургеры</button>
+    <button class="cat-item" onclick="filter('chicken', this)">Курица</button>
+    <button class="cat-item" onclick="filter('drinks', this)">Напитки</button>
+</div>
+
+<div class="menu-container" id="menu"></div>
+
+<div class="cart-bar" id="cartBar" onclick="sendOrder()">
+    <div style="font-weight:bold">Итого: <span id="total">0</span> ₽</div>
+    <div style="font-weight:800">ЗАКАЗАТЬ →</div>
+</div>
+
+<script>
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // Данные меню
+    const products = [
+        { cat: 'burgers', name: "Ростмастер Классик", price: 299, img: "https://m.rostics.ru/images/products/boxmaster_classic.png" },
+        { cat: 'burgers', name: "Азия Бургер", price: 291, img: "https://m.rostics.ru/images/products/asia_burger.png" },
+        { cat: 'burgers', name: "Шефбургер", price: 190, img: "https://m.rostics.ru/images/products/chefburger_classic.png" },
+        { cat: 'chicken', name: "Баскет L (24 крыла)", price: 870, img: "https://m.rostics.ru/images/products/basket_l_wings.png" },
+        { cat: 'chicken', name: "Острые крылья (8 шт)", price: 319, img: "https://m.rostics.ru/images/products/wings_8.png" },
+        { cat: 'drinks', name: "Кола 0.5", price: 147, img: "https://m.rostics.ru/images/products/evervess_cola_05.png" },
+        { cat: 'drinks', name: "Капучино", price: 87, img: "https://m.rostics.ru/images/products/cappuccino_03.png" }
+    ];
+
+    let cart = [];
+
+    function render(f = 'all') {
+        const m = document.getElementById('menu');
+        m.innerHTML = '';
+        products.forEach(p => {
+            if(f === 'all' || p.cat === f) {
+                const c = document.createElement('div');
+                c.className = 'card';
+                c.innerHTML = `
+                    <img src="${p.img}" alt="">
+                    <div class="price">${p.price} ₽</div>
+                    <div class="name">${p.name}</div>
+                    <button class="btn-add" onclick="buy('${p.name}', ${p.price})">+</button>
+                `;
+                m.appendChild(c);
+            }
+        });
+    }
+
+    function filter(cat, btn) {
+        document.querySelectorAll('.cat-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render(cat);
+    }
+
+    function buy(name, price) {
+        cart.push({name, price});
+        const total = cart.reduce((s, i) => s + i.price, 0);
+        document.getElementById('total').innerText = total;
+        document.getElementById('cartBar').style.display = 'flex';
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+
+    function sendOrder() {
+        if (cart.length === 0) return;
+        const data = {
+            items: cart.map(i => i.name),
+            total: cart.reduce((s, i) => s + i.price, 0)
+        };
+        tg.sendData(JSON.stringify(data));
+        tg.close();
+    }
+
+    // Запуск отображения
+    render();
+</script>
+</body>
+</html>
