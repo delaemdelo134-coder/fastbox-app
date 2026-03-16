@@ -1,0 +1,64 @@
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // Этот сервис поможет обойти блокировку картинок
+    const proxy = "https://images.weserv.nl/?url=";
+
+    const products = [
+        { cat: 'burgers', name: "Ростмастер Классик", price: 291, img: "m.rostics.ru/images/products/boxmaster_classic.png" },
+        { cat: 'burgers', name: "Азия Бургер", price: 291, img: "m.rostics.ru/images/products/asia_burger.png" },
+        { cat: 'burgers', name: "Двойной Азия Краб", price: 515, img: "m.rostics.ru/images/products/double_asia_crab_burger.png" },
+        { cat: 'burgers', name: "Шефбургер", price: 190, img: "m.rostics.ru/images/products/chefburger_classic.png" },
+        { cat: 'chicken', name: "Баскет L (24 крыла)", price: 870, img: "m.rostics.ru/images/products/basket_l_wings.png" },
+        { cat: 'chicken', name: "Острые крылья (8 шт)", price: 319, img: "m.rostics.ru/images/products/wings_8.png" },
+        { cat: 'drinks', name: "Кола 0.5 л", price: 147, img: "m.rostics.ru/images/products/evervess_cola_05.png" },
+        { cat: 'drinks', name: "Бабл Ти Зеленый Lipton", price: 291, img: "m.rostics.ru/images/products/bubble_tea_lipton.png" },
+        { cat: 'drinks', name: "Ягодный Глинтвейн", price: 136, img: "m.rostics.ru/images/products/berry_mulled_wine.png" }
+    ];
+
+    function render(f = 'all') {
+        const m = document.getElementById('menu');
+        m.innerHTML = '';
+        products.forEach(p => {
+            if(f === 'all' || p.cat === f) {
+                const c = document.createElement('div');
+                c.className = 'card';
+                // Добавляем proxy перед ссылкой на картинку
+                c.innerHTML = `
+                    <img src="${proxy + p.img}" alt="${p.name}">
+                    <div class="price">${p.price} ₽</div>
+                    <div class="name">${p.name}</div>
+                    <button class="btn-add" onclick="buy('${p.name}', ${p.price})">+</button>
+                `;
+                m.appendChild(c);
+            }
+        });
+    }
+
+    let cart = [];
+    function buy(name, price) {
+        cart.push({name, price});
+        const total = cart.reduce((s, i) => s + i.price, 0);
+        document.getElementById('total').innerText = total;
+        document.getElementById('cartBar').style.display = 'flex';
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+
+    function filter(cat, btn) {
+        document.querySelectorAll('.cat-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render(cat);
+    }
+
+    function sendOrder() {
+        const data = {
+            items: cart.map(i => i.name),
+            total: cart.reduce((s, i) => s + i.price, 0)
+        };
+        tg.sendData(JSON.stringify(data));
+        tg.close();
+    }
+
+    render();
+</script>
