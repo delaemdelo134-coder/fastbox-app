@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FastBox Syzran Ultimate</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&apikey=25576856-4273-455a-8b8b-965421c6407d" type="text/javascript"></script>
+    <style>
+        :root { --accent: #FFCC00; --bg: #000; --card: #1C1C1E; --sub: #8E8E93; }
+        body { font-family: -apple-system, sans-serif; margin: 0; background: var(--bg); color: #fff; padding-bottom: 100px; overflow-x: hidden; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #222; }
+        .balance-chip { background: #222; color: var(--accent); padding: 6px 12px; border-radius: 20px; font-weight: 800; font-size: 13px; }
+
+        .page { display: none; padding: 20px; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .item-card { background: var(--card); border-radius: 24px; padding: 16px; margin-bottom: 12px; border: 1px solid #2C2C2E; display: flex; align-items: center; gap: 15px; }
+        .item-img { width: 60px; height: 60px; border-radius: 14px; object-fit: cover; }
+        .btn-add { background: var(--accent); color: #000; border: none; width: 35px; height: 35px; border-radius: 10px; font-weight: 900; }
+
+        /* КОРЗИНА */
+        .cart-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #222; }
+        #map { width: 100%; height: 200px; border-radius: 20px; margin: 15px 0; display: none; border: 1px solid #333; }
+        .input-addr { width: 100%; background: #111; border: 1px solid #333; padding: 15px; border-radius: 15px; color: #fff; box-sizing: border-box; margin-top: 10px; }
+
+        /* КОЛЕСО */
+        .wheel-wrap { text-align: center; background: var(--card); padding: 20px; border-radius: 28px; border: 1px solid #2C2C2E; margin-bottom: 20px; }
+        #wheel-img { width: 120px; transition: 4s cubic-bezier(0.15, 0, 0.15, 1); }
+
+        /* ТАБЫ */
+        .tabs { position: fixed; bottom: 0; width: 100%; height: 75px; background: #111; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #222; z-index: 1000; }
+        .tab-btn { text-align: center; color: var(--sub); font-size: 10px; flex: 1; }
+        .tab-btn.active { color: var(--accent); }
+        
+        .main-btn { background: var(--accent); color: #000; width: 100%; padding: 16px; border-radius: 18px; border: none; font-weight: 900; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="font-weight:900;">FastBox <span>SYZRAN</span></div>
+        <div class="balance-chip">💎 <span id="balance-val">550</span> FC</div>
+    </div>
+
+    <div id="p-main" class="page active">
+        <div style="background: linear-gradient(45deg, #FFCC00, #FFA500); padding: 20px; border-radius: 24px; color: #000; font-weight: 900; margin-bottom: 15px;">
+            АКЦИЯ: Доставка 0 ₽<br><span style="font-weight:500; font-size:12px;">на первый заказ в Сызрани</span>
+        </div>
+        <div onclick="openPage('catalog')" class="item-card">🍱 <b>Меню Ресторанов</b></div>
+        <div onclick="openPage('catalog')" class="item-card">🌹 <b>Цветы и Подарки</b></div>
+        <div onclick="openPage('support')" class="item-card">🎧 <b>Поддержка 24/7</b></div>
+    </div>
+
+    <div id="p-catalog" class="page">
+        <h3>Меню</h3>
+        <div class="item-card">
+            <img src="channels4_profile.jpg" class="item-img" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200'">
+            <div style="flex:1;"><b>Боксмастер</b><br><small>259 ₽</small></div>
+            <button class="btn-add" onclick="addItem('Боксмастер', 259)">+</button>
+        </div>
+        <div class="item-card">
+            <div class="item-img" style="background:#222; display:flex; align-items:center; justify-content:center; font-size:24px;">🌹</div>
+            <div style="flex:1;"><b>Букет 15 Роз</b><br><small>2490 ₽</small></div>
+            <button class="btn-add" onclick="addItem('Букет 15 Роз', 2490)">+</button>
+        </div>
+    </div>
+
+    <div id="p-cart" class="page">
+        <h3>Твоя корзина</h3>
+        <div id="cart-list"></div>
+        <div id="order-form" style="display:none; margin-top:20px;">
+            <b>Адрес доставки:</b>
+            <input type="text" id="addr-input" class="input-addr" placeholder="Сызрань, пр-т 50 лет Октября, 1" oninput="updateLogistics()">
+            <div id="map"></div>
+            <div id="dist-info" style="color:var(--accent); font-size:12px; margin: 10px 0; font-weight:700;"></div>
+            <div style="background:var(--card); padding:15px; border-radius:15px;">
+                <div style="display:flex; justify-content:space-between;"><span>Итого:</span><b id="final-sum">0 ₽</b></div>
+            </div>
+            <button class="main-btn" onclick="sendOrder()">ОФОРМИТЬ</button>
+        </div>
+    </div>
+
+    <div id="p-cabinet" class="page">
+        <div style="background:var(--card); padding:20px; border-radius:24px; border:1px solid #333; margin-bottom:15px;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <div id="u-ava" style="width:50px; height:50px; background:var(--accent); border-radius:15px; color:#000; display:flex; align-items:center; justify-content:center; font-weight:900;">?</div>
+                <b id="u-name">Клиент</b>
+            </div>
+            <button class="main-btn" id="daily-btn" onclick="claimDaily()">ЗАБРАТЬ +50 FC</button>
+        </div>
+
+        <div class="wheel-wrap">
+            <b>Колесо удачи</b><br>
+            <img id="wheel-img" src="https://cdn-icons-png.flaticon.com/512/610/610106.png">
+            <button class="main-btn" style="background:#333; color:#fff;" onclick="spin()">КРУТИТЬ</button>
+        </div>
+
+        <div style="background:rgba(255,204,0,0.1); border:1px dashed var(--accent); padding:15px; border-radius:20px;">
+            <b style="color:var(--accent);">Пригласи друга</b>
+            <p style="font-size:11px; margin:5px 0;">+500 FC за каждого!</p>
+            <button class="main-btn" onclick="tg.showConfirm('Ссылка скопирована!')">КОПИРОВАТЬ</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab-btn active" onclick="openPage('main')">🏠<br>Главная</div>
+        <div class="tab-btn" onclick="openPage('catalog')">🍱<br>Меню</div>
+        <div class="tab-btn" onclick="openPage('cart')">🛒<br>Корзина</div>
+        <div class="tab-btn" onclick="openPage('cabinet')">👤<br>Профиль</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        let cart = [], balance = 550, delCost = 0, yMap, route;
+
+        ymaps.ready(() => { yMap = new ymaps.Map("map", { center:[53.155, 48.474], zoom:12, controls:[] }); });
+
+        function openPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            document.getElementById('p-'+id).classList.add('active');
+            const idx = {main:0, catalog:1, cart:2, cabinet:3}[id];
+            document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+        }
+
+        function addItem(n, p) { 
+            cart.push({n, p, id:Date.now()}); 
+            tg.HapticFeedback.impactOccurred('medium'); 
+            renderCart(); 
+        }
+
+        function renderCart() {
+            const list = document.getElementById('cart-list');
+            const form = document.getElementById('order-form');
+            if(!cart.length) { list.innerHTML = '<p style="text-align:center;">Пусто</p>'; form.style.display='none'; return; }
+            form.style.display = 'block';
+            list.innerHTML = cart.map(i => `<div class="cart-row"><span>${i.n}</span><b>${i.p} ₽ <button onclick="removeItem(${i.id})" style="background:none; border:none; color:red;">×</button></b></div>`).join('');
+            calc();
+        }
+
+        function removeItem(id) { cart = cart.filter(i => i.id !== id); renderCart(); }
+
+        function updateLogistics() {
+            const a = document.getElementById('addr-input').value;
+            if(a.length < 5) return;
+            document.getElementById('map').style.display = 'block';
+            ymaps.route(['Сызрань, ул. Советская, 1', 'Сызрань, '+a]).then(res => {
+                if(route) yMap.geoObjects.remove(route);
+                route = res; yMap.geoObjects.add(route);
+                const d = Math.round(route.getLength()/1000);
+                delCost = 150 + (d * 25);
+                document.getElementById('dist-info').innerText = `Дистанция: ${d} км | Доставка: ${delCost} ₽`;
+                calc();
+            });
+        }
+
+        function calc() { 
+            const sum = cart.reduce((s,i)=>s+i.p,0) + delCost;
+            document.getElementById('final-sum').innerText = sum + ' ₽'; 
+        }
+
+        function claimDaily() {
+            balance += 50; updateBal();
+            const b = document.getElementById('daily-btn'); b.disabled = true; b.innerText = 'ПОЛУЧЕНО';
+            tg.showAlert('Начислено 50 FC!');
+        }
+
+        function spin() {
+            const w = document.getElementById('wheel-img');
+            const deg = Math.floor(Math.random()*360) + 1800;
+            w.style.transform = `rotate(${deg}deg)`;
+            setTimeout(() => { tg.showAlert('Твой приз: Скидка 10%!'); }, 4100);
+        }
+
+        function updateBal() { document.getElementById('balance-val').innerText = balance; }
+        function sendOrder() { tg.showConfirm('Оформить?', ok => { if(ok) { tg.showAlert('Готово! Ждите курьера.'); cart=[]; renderCart(); openPage('main'); } }); }
+
+        const u = tg.initDataUnsafe?.user;
+        if(u) { document.getElementById('u-name').innerText = u.first_name; document.getElementById('u-ava').innerText = u.first_name[0]; }
+    </script>
+</body>
+</html>
