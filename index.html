@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FastBox - В Разработке</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --accent: #FFCC00;
+            --dark-bg: #000000;
+            --card-bg: #1C1C1E;
+            --text-main: #FFFFFF;
+            --text-sub: #8E8E93;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--dark-bg);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 400px;
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: rotateGear 5s linear infinite;
+        }
+
+        @keyframes rotateGear {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        h1 {
+            font-weight: 900;
+            font-size: 28px;
+            margin-top: 0;
+            letter-spacing: -1px;
+        }
+
+        h1 span {
+            color: var(--accent);
+        }
+
+        .meme-text {
+            color: var(--text-sub);
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+
+        .balance-badge {
+            background: #2C2C2E;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #000000;
+            border: none;
+            padding: 18px 30px;
+            border-radius: 20px;
+            font-weight: 900;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">⚙️</div>
+        <h1>FastBox: <span>Режим Ожидания</span></h1>
+        
+        <p class="meme-text">
+            Наш единственный разработчик сейчас пытается понять,<br>
+            почему PHP код не работает в JavaScript.<br>
+            <br>
+            Админы FastBox <br>
+            на данное время в запое,<br>
+            но они обязательно доделают<br>
+            это приложение.
+        </p>
+        
+        <div class="balance-badge">
+            да ты чё, базара нет
+        </div>
+        
+        <button class="btn" onclick="backToMain()">К ГЛАВНОМУ ЧАТУ</button>
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Показываем alert при загрузке (для теста)
+        // tg.showAlert("Эта страница находится в разработке!");
+
+        function backToMain() {
+            // Вибрация
+            tg.HapticFeedback.impactOccurred('medium');
+            
+            // Если WebApp запущен через бота, эта кнопка не сработает
+            // Для реального возврата нужно настроить MainButton или BackButton Telegram
+            
+            // Показываем уведомление
+            tg.showPopup({
+                title: "FastBox Сызрань",
+                message: "Для возврата к чату с ботом просто закройте это приложение (крестик сверху справа).",
+                buttons: [{text: "Понял", type: "ok"}]
+            });
+            
+            // Альтернатива - закрыть WebApp (не всегда удобно)
+            // tg.close();
+        }
+    </script>
+</body>
+</html>
