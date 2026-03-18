@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FastBox Black Edition - Syzran</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --accent: #FFCC00;
+            --dark-bg: #000000;
+            --card-bg: #1C1C1E;
+            --text-main: #FFFFFF;
+            --text-sub: #8E8E93;
+            --tab-bar-bg: #161618;
+            --ros-red: #e41c2d;
+            --ros-bg: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            margin: 0; padding: 0;
+            background-color: var(--dark-bg);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 90px;
+            overflow-x: hidden;
+        }
+
+        /* --- ШАПКА --- */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(10px);
+            position: sticky; top: 0; z-index: 1000;
+            border-bottom: 1px solid #2C2C2E;
+            height: 65px; box-sizing: border-box;
+        }
+        .brand { font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+        .brand span { color: var(--accent); }
+        .back-btn { display: none; color: var(--accent); cursor: pointer; font-size: 16px; font-weight: 600; }
+        .balance-badge { background: #2C2C2E; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; color: var(--accent); }
+
+        /* --- КОНТЕНТНЫЕ СЕКЦИИ --- */
+        .content-page { display: none; animation: fadeIn 0.3s ease; }
+        .content-page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- ГЛАВНАЯ: НОВОСТИ И МЕНЮ --- */
+        .news-section { padding: 15px 0 15px 20px; }
+        .news-container { display: flex; overflow-x: auto; gap: 12px; padding-right: 20px; scrollbar-width: none; }
+        .news-container::-webkit-scrollbar { display: none; }
+        .news-item { 
+            flex: 0 0 120px; height: 160px; border-radius: 22px; 
+            background-size: cover; background-position: center; border: 1px solid #2C2C2E;
+            position: relative;
+        }
+        .news-item::after {
+            content: ""; position: absolute; inset: 0; 
+            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); border-radius: 22px;
+        }
+
+        .menu-container { padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .menu-item { 
+            background: var(--card-bg); border-radius: 24px; padding: 20px; 
+            border: 1px solid #2C2C2E; display: flex; flex-direction: column; cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .menu-item:active { transform: scale(0.97); }
+        .menu-item .icon { font-size: 32px; margin-bottom: 10px; }
+        .menu-item .label { font-weight: 800; font-size: 14px; }
+
+        /* --- СПИСОК РЕСТОРАНОВ --- */
+        .restaurants-grid { padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .res-card {
+            background: var(--card-bg); border-radius: 18px; padding: 12px;
+            text-align: center; border: 1px solid #2C2C2E; cursor: pointer;
+        }
+        .res-logo { width: 55px; height: 55px; background: #fff; border-radius: 12px; margin-bottom: 8px; object-fit: contain; }
+
+        /* --- РОСТИКС (БЕЛЫЙ СТИЛЬ) --- */
+        #page-rostics-menu { background: var(--ros-bg); color: #000; min-height: 100vh; }
+        .ros-header { padding: 15px 20px; font-weight: 900; font-size: 20px; color: #000; border-bottom: 1px solid #f0f0f0; }
+        .ros-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 15px; }
+        .ros-card { background: #f8f8f8; border-radius: 24px; padding: 12px; border: 1px solid #eee; position: relative; }
+        .ros-price { font-weight: 900; font-size: 16px; margin: 8px 0 2px; }
+        .ros-name { font-size: 12px; font-weight: 600; color: #444; line-height: 1.2; }
+
+        /* --- МОДАЛКА РОСТИКС --- */
+        #ros-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; z-index: 2000; backdrop-filter: blur(5px); }
+        #ros-modal { 
+            position: fixed; bottom: 0; left: 0; right: 0; background: #fff; 
+            border-radius: 28px 28px 0 0; max-height: 88vh; overflow-y: auto; color: #000;
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); 
+        }
+        .m-content { padding: 20px; }
+        .section-title { font-size: 16px; font-weight: 800; margin: 20px 0 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .row-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+        .row-item.selected .radio { border-color: var(--ros-red); background: var(--ros-red); }
+        .radio { width: 22px; height: 22px; border: 2px solid #ddd; border-radius: 50%; transition: 0.2s; }
+
+        /* --- КАБИНЕТ --- */
+        .user-card { background: linear-gradient(135deg, #1C1C1E 0%, #080808 100%); border-radius: 24px; padding: 20px; margin: 15px 20px; border: 1px solid #2C2C2E; }
+        .referral-card { background: linear-gradient(135deg, #2C2C2E 0%, #1C1C1E 100%); border-radius: 24px; padding: 20px; margin: 0 20px 20px; border: 1px solid rgba(255,204,0,0.2); }
+        .prog-bg { height: 10px; background: #2C2C2E; border-radius: 10px; margin-top: 15px; position: relative; }
+        .prog-fill { height: 100%; background: var(--accent); border-radius: 10px; box-shadow: 0 0 10px var(--accent); }
+
+        /* --- ТАБ-БАР --- */
+        .tab-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; height: 75px;
+            background: var(--tab-bar-bg); border-top: 1px solid #2C2C2E;
+            display: flex; justify-content: space-around; align-items: center; padding-bottom: 15px; z-index: 1000;
+        }
+        .tab-item { display: flex; flex-direction: column; align-items: center; color: var(--text-sub); font-size: 10px; font-weight: 600; cursor: pointer; }
+        .tab-item.active { color: var(--accent); }
+        .tab-item span { margin-top: 4px; }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.4; } 100% { transform: scale(1.6); opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="back-btn" id="back-btn" onclick="goBack()">← Назад</div>
+        <div class="brand" id="header-brand">FastBox <span>BLACK</span></div>
+        <div class="balance-badge">💎 550 FC</div>
+    </div>
+
+    <div id="page-main" class="content-page active">
+        <div class="news-section">
+            <div class="news-container" id="news-feed">
+                </div>
+        </div>
+        <div class="menu-container">
+            <div class="menu-item" style="grid-column: span 2;" onclick="openRestaurants()">
+                <div class="icon">🍱</div>
+                <div class="label">Рестораны и Еда</div>
+            </div>
+            <div class="menu-item" onclick="tg.showAlert('Раздел Спецпредложения скоро откроется!')">
+                <div class="icon">🚑</div>
+                <div class="label">Аптеки</div>
+            </div>
+            <div class="menu-item" onclick="tg.showAlert('Цветы будут доступны к праздникам!')">
+                <div class="icon">🎁</div>
+                <div class="label">Цветы</div>
+            </div>
+        </div>
+        <div style="padding: 25px 20px; opacity: 0.5; font-size: 12px; text-align: center;">Сызрань • Экспресс-доставка</div>
+    </div>
+
+    <div id="page-restaurants" class="content-page">
+        <div style="padding: 15px 20px; font-weight: 700; color: var(--text-sub); font-size: 13px;">ЗАВЕДЕНИЯ В СЫЗРАНИ</div>
+        <div class="restaurants-grid">
+            <div class="res-card" onclick="openRostics()">
+                <img src="https://upload.wikimedia.org/wikipedia/ru/thumb/e/e3/Rostic%27s_logo.svg/1200px-Rostic%27s_logo.svg.png" class="res-logo">
+                <div style="font-size:11px; font-weight:700;">ROSTIC'S</div>
+            </div>
+            <div class="res-card" style="opacity: 0.6;">
+                <div class="res-logo" style="display:flex; align-items:center; justify-content:center; background:#222; font-size:20px;">🍕</div>
+                <div style="font-size:11px; font-weight:700;">Dodo Pizza</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-rostics-menu" class="content-page">
+        <div class="ros-header">Комбо и Ланчи</div>
+        <div id="ros-grid" class="ros-grid">
+            </div>
+    </div>
+
+    <div id="page-cabinet" class="content-page">
+        <div class="user-card">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <div style="width:50px; height:50px; background:var(--accent); border-radius:15px; color:#000; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:20px;">А</div>
+                    <div>
+                        <div style="font-weight:800; font-size:18px;">Александр</div>
+                        <div style="font-size:11px; color:var(--accent); font-weight:700;">ПОСТОЯННЫЙ КЛИЕНТ</div>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:18px; font-weight:900;">550 FC</div>
+                </div>
+            </div>
+            <div class="prog-bg">
+                <div class="prog-fill" style="width: 70%;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:10px; margin-top:8px; color:var(--text-sub);">
+                <span>Уровень: Gold</span>
+                <span>До скидки 10%: 150 FC</span>
+            </div>
+        </div>
+
+        <div class="referral-card">
+            <div style="font-weight:900; font-size:15px; margin-bottom:5px;">ПРИГЛАСИ ДРУГА — ПОЛУЧИ 500 FC</div>
+            <p style="font-size:11px; color:var(--text-sub); line-height:1.4; margin-bottom:15px;">
+                Поделись ссылкой: друг получит 500 бонусов на первый заказ, а ты — 500 после его доставки.
+            </p>
+            <div style="display:flex; gap:10px;">
+                <button onclick="tg.showConfirm('Ссылка скопирована!')" style="flex:1; background:var(--accent); border:none; padding:12px; border-radius:12px; font-weight:800; font-size:13px;">КОПИРОВАТЬ</button>
+                <button onclick="tg.showAlert('Поделиться в Telegram')" style="width:50px; background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:12px;">📲</button>
+            </div>
+        </div>
+
+        <div style="padding:0 20px; margin-bottom:30px;">
+            <div style="display:flex; gap:12px; overflow-x:auto; scrollbar-width:none;">
+                <div onclick="tg.showAlert('Вы забрали бонус дня: 10 FC!')" style="flex:0 0 120px; background:var(--card-bg); padding:15px; border-radius:20px; border:1px solid #2C2C2E; text-align:center;">
+                    <div style="font-size:24px; margin-bottom:5px;">🎁</div>
+                    <div style="font-weight:700; font-size:12px;">Бонус дня</div>
+                </div>
+                <div style="flex:0 0 120px; background:var(--card-bg); padding:15px; border-radius:20px; border:1px solid #2C2C2E; text-align:center; opacity:0.5;">
+                    <div style="font-size:24px; margin-bottom:5px;">🎡</div>
+                    <div style="font-weight:700; font-size:12px;">Колесо</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-support" class="content-page">
+        <div style="padding:40px 20px; text-align:center;">
+            <div style="position:relative; width:80px; height:80px; margin:0 auto 20px;">
+                <div style="position:absolute; inset:0; background:var(--accent); border-radius:50%; opacity:0.2; animation: pulse 2s infinite;"></div>
+                <div style="position:relative; width:80px; height:80px; background:var(--card-bg); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:35px; border:2px solid var(--accent);">🎧</div>
+            </div>
+            <h2 style="margin:0; font-weight:900;">Сызрань на связи</h2>
+            <p style="color:var(--text-sub); font-size:13px;">Ответим за пару минут</p>
+        </div>
+        <div style="padding:0 20px; display:grid; gap:10px;">
+            <div class="menu-item" style="flex-direction:row; align-items:center; gap:15px; padding:15px;" onclick="tg.showAlert('Курьер будет через 10 минут')">
+                <span style="font-size:24px;">📍</span>
+                <div style="text-align:left;"><div style="font-weight:700;">Где мой заказ?</div><div style="font-size:10px; color:var(--text-sub);">Статус доставки онлайн</div></div>
+            </div>
+            <div class="menu-item" style="flex-direction:row; align-items:center; gap:15px; padding:15px;">
+                <span style="font-size:24px;">❌</span>
+                <div style="text-align:left;"><div style="font-weight:700;">Проблема с заказом</div><div style="font-size:10px; color:var(--text-sub);">Вернем деньги или заменим</div></div>
+            </div>
+            <button style="background:var(--accent); color:#000; border:none; width:100%; padding:18px; border-radius:20px; font-weight:900; margin-top:15px;">ЧАТ С ОПЕРАТОРОМ</button>
+        </div>
+    </div>
+
+    <div id="ros-modal-overlay" onclick="closeRosModal()">
+        <div id="ros-modal" onclick="event.stopPropagation()">
+            <img id="m-img" style="width:100%; aspect-ratio:1/1; object-fit:cover;">
+            <div class="m-content">
+                <div id="m-title" style="font-size:24px; font-weight:900; color:var(--ros-red);"></div>
+                <div style="font-size:13px; color:#777; margin:8px 0 20px;">6 креветок + Картофель Фри + Напиток 0.4 л</div>
+                
+                <div class="section-title">Состав комбо</div>
+                <div class="row-item">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="https://eda.yandex/images/13583683/ba2a6c0edebe0896ed40c3aa67e48739-400x400nocrop.jpeg" style="width:50px; border-radius:10px;">
+                        <span style="font-weight:600;">6 креветок</span>
+                    </div>
+                    <span style="font-size:10px; background:#f0f0f0; padding:4px 8px; border-radius:6px; font-weight:700;">ВКЛЮЧЕНО</span>
+                </div>
+                <div class="row-item">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="https://eda.yandex/images/18012291/6421bb9437d87a3ce2ba2465ccf7e594-400x400nocrop.jpeg" style="width:50px; border-radius:10px;">
+                        <span style="font-weight:600;">Картофель фри</span>
+                    </div>
+                    <span style="font-size:10px; background:#f0f0f0; padding:4px 8px; border-radius:6px; font-weight:700;">ВКЛЮЧЕНО</span>
+                </div>
+
+                <div class="section-title">Напиток на выбор</div>
+                <div id="drink-list"></div>
+            </div>
+            <div style="padding: 20px; background:#fff; position:sticky; bottom:0; border-top:1px solid #eee;">
+                <button style="background:var(--ros-red); color:#fff; border:none; width:100%; padding:20px; border-radius:20px; font-weight:900; font-size:16px;" onclick="confirmOrder()">ДОБАВИТЬ ЗА <span id="m-price"></span> ₽</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-bar">
+        <div class="tab-item active" id="tab-main" onclick="switchTab(this, 'main')">
+            <span style="font-size:22px;">🏠</span><span>Главная</span>
+        </div>
+        <div class="tab-item" id="tab-cabinet" onclick="switchTab(this, 'cabinet')">
+            <span style="font-size:22px;">👤</span><span>Кабинет</span>
+        </div>
+        <div class="tab-item" id="tab-support" onclick="switchTab(this, 'support')">
+            <span style="font-size:22px;">🆘</span><span>Помощь</span>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.enableClosingConfirmation();
+
+        let navStack = ['main'];
+
+        // Данные
+        const newsData = [
+            { img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400' },
+            { img: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400' },
+            { img: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400' }
+        ];
+
+        const drinks = [
+            { n: "Эвервесс Кола 0,4 л", i: "https://eda.yandex/images/18155812/477fc31c7494d1d7ac4a7f095e1f4e06-400x400nocrop.jpeg" },
+            { n: "Фрустайл Апельсин 0,4 л", i: "https://eda.yandex/images/17635794/2bcf653285701bb6a855174c1580df1f-400x400nocrop.jpeg" },
+            { n: "Фрустайл Лимон-Лайм", i: "https://eda.yandex/images/18753459/624ced7ecf9f7dff6e12f46e8326d631-400x400nocrop.jpeg" }
+        ];
+
+        // Рендер новостей
+        const newsFeed = document.getElementById('news-feed');
+        newsData.forEach(n => {
+            const div = document.createElement('div');
+            div.className = 'news-item';
+            div.style.backgroundImage = `url(${n.img})`;
+            newsFeed.appendChild(div);
+        });
+
+        // Навигация
+        function showPage(id) {
+            document.querySelectorAll('.content-page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + id).classList.add('active');
+            
+            const isRoot = ['main', 'cabinet', 'support'].includes(id);
+            document.getElementById('back-btn').style.display = isRoot ? 'none' : 'block';
+            document.getElementById('header-brand').style.display = isRoot ? 'block' : 'none';
+            
+            // Скролл вверх при переходе
+            window.scrollTo(0, 0);
+        }
+
+        function openRestaurants() {
+            navStack.push('restaurants');
+            showPage('restaurants');
+        }
+
+        function openRostics() {
+            navStack.push('rostics-menu');
+            showPage('rostics-menu');
+            renderRosGrid();
+        }
+
+        function renderRosGrid() {
+            document.getElementById('ros-grid').innerHTML = `
+                <div class="ros-card" onclick="openRosModal()">
+                    <div style="background: red; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 5px; position: absolute; top: 10px; right: 10px; font-weight: 900; z-index: 1;">ХИТ</div>
+                    <img src="https://eda.yandex/images/18772141/cf2a821b258a3f68a79ae7b26b85ad01-400x400nocrop.jpeg" style="width:100%; border-radius:16px;">
+                    <div class="ros-price">556 ₽</div>
+                    <div class="ros-name">КОМБО С КРЕВЕТКАМИ</div>
+                </div>
+                <div class="ros-card" style="opacity: 0.5;">
+                    <div style="width:100%; aspect-ratio:1/1; background:#eee; border-radius:16px; display:flex; align-items:center; justify-content:center;">🍗</div>
+                    <div class="ros-price">450 ₽</div>
+                    <div class="ros-name">Шеф Комбо</div>
+                </div>
+            `;
+        }
+
+        function goBack() {
+            if (navStack.length > 1) {
+                navStack.pop();
+                showPage(navStack[navStack.length - 1]);
+            }
+        }
+
+        function switchTab(el, id) {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            navStack = [id];
+            showPage(id);
+            tg.HapticFeedback.impactOccurred('light');
+        }
+
+        // Модалка Ростикс
+        function openRosModal() {
+            document.getElementById('m-img').src = "https://eda.yandex/images/18772141/cf2a821b258a3f68a79ae7b26b85ad01-400x400nocrop.jpeg";
+            document.getElementById('m-title').innerText = "КОМБО С КРЕВЕТКАМИ";
+            document.getElementById('m-price').innerText = "556";
+            
+            const drinkHtml = drinks.map((d, index) => `
+                <div class="row-item ${index === 0 ? 'selected' : ''}" onclick="selectDrink(this)">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="${d.i}" style="width:45px; height:45px; border-radius:10px; object-fit:cover;">
+                        <span style="font-weight:600; font-size:14px;">${d.n}</span>
+                    </div>
+                    <div class="radio"></div>
+                </div>
+            `).join('');
+            
+            document.getElementById('drink-list').innerHTML = drinkHtml;
+            document.getElementById('ros-modal-overlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('ros-modal').style.transform = 'translateY(0)';
+            }, 10);
+        }
+
+        function selectDrink(el) {
+            document.querySelectorAll('#drink-list .row-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            tg.HapticFeedback.selectionChanged();
+        }
+
+        function closeRosModal() {
+            document.getElementById('ros-modal').style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                document.getElementById('ros-modal-overlay').style.display = 'none';
+            }, 300);
+        }
+
+        function confirmOrder() {
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.sendData(JSON.stringify({
+                action: "order",
+                item: "Комбо с креветками",
+                price: 556
+            }));
+            closeRosModal();
+        }
+    </script>
+</body>
+</html>
